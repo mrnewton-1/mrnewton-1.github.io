@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organigramme — Bibliothèque</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+@media print {
+  @page {
+    size: A3 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+  :root{
+    --paper:#EFEAE0;
+    --card:#FBF9F4;
+    --ink:#20293A;
+    --ink-soft:#5B6474;
+    --line:#C9C2AE;
+
+    --adultes:#2E4A6B;
+    --jeunesse:#3C6E47;
+    --ados:#A85A26;
+    --jeux:#5F3763;
+    --actualites:#3A6B72;
+
+    --rouge:#B23A2E;
+    --bleue:#2E5FA3;
+    --blanche:#B9AE8E;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Sans 3', system-ui, sans-serif;
+    line-height:1.4;
+  }
+
+  header{
+    background:var(--ink);
+    color:#EFEAE0;
+    padding:2.2rem 1.5rem 1.8rem;
+    text-align:center;
+  }
+  header .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.08em;
+    color:#B7C0D1;
+  }
+  header h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(1.6rem, 4vw, 2.4rem);
+    margin:0.4rem 0 0.3rem;
+  }
+  header p{ margin:0; color:#C7CCD8; font-size:0.92rem; }
+
+  .toolbar{
+    max-width:1000px;
+    margin:1.4rem auto 0;
+    padding:0 1.5rem;
+    display:flex;
+    gap:0.6rem;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .toolbar button{
+    font-family:'Source Sans 3', sans-serif;
+    font-size:0.85rem;
+    font-weight:600;
+    border:1px solid var(--ink);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.5rem 0.95rem;
+    border-radius:3px;
+    cursor:pointer;
+  }
+  .toolbar button:hover{ background:var(--ink); color:var(--paper); }
+
+  .chart-wrap{
+    overflow-x:auto;
+    overflow-y:visible;
+    text-align:center;
+    padding:2.2rem 1rem 4rem;
+    cursor:grab;
+    touch-action:pan-y;
+    scrollbar-width:thin;
+    scrollbar-color:var(--line) var(--paper);
+  }
+  .chart-wrap.dragging{ cursor:grabbing; user-select:none; -webkit-user-select:none; }
+  .chart-wrap::-webkit-scrollbar{ height:10px; }
+  .chart-wrap::-webkit-scrollbar-track{ background:var(--paper); }
+  .chart-wrap::-webkit-scrollbar-thumb{ background:var(--line); border-radius:5px; }
+  .chart-wrap::-webkit-scrollbar-thumb:hover{ background:var(--ink-soft); }
+
+  .chart-scaler{
+    display:inline-block;
+  }
+  .chart-inner{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:left;
+    transform-origin: top left;
+  }
+  .zoom-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.8rem;
+    display:inline-flex;
+    align-items:center;
+    padding:0 0.4rem;
+    color:var(--ink-soft);
+  }
+
+  .stem{
+    width:0;
+    height:1.5rem;
+    border-left:2px solid var(--line);
+  }
+
+  /* --- box --- */
+  .box{
+    display:inline-block;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-top:4px solid var(--ink);
+    border-radius:6px;
+    padding:0.4rem 0.65rem 0.55rem;
+    min-width:140px;
+    max-width:230px;
+    text-align:left;
+    position:relative;
+  }
+  .box-controls{
+    display:flex;
+    align-items:center;
+    gap:0.25rem;
+    margin-bottom:0.3rem;
+  }
+  .box-controls .spacer{ flex:1; }
+  .box-controls button{
+    width:20px; height:20px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.72rem;
+    line-height:1;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink-soft);
+    border-radius:3px;
+    cursor:pointer;
+    padding:0;
+  }
+  .box-controls button:hover{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn-remove.confirming{ background:var(--ados); color:#fff; border-color:var(--ados); }
+  .btn-toggle{ transition:transform 0.15s ease; }
+  .node:not(.collapsed) > .box .btn-toggle{ transform:rotate(90deg); }
+  .node.collapsed > .box .btn-toggle{ transform:rotate(0deg); }
+
+  .label{
+    font-weight:600;
+    font-size:0.92rem;
+  }
+  .detail{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    margin-top:0.2rem;
+    min-height:1em;
+  }
+  [contenteditable="true"]{ outline:none; border-radius:2px; }
+  [contenteditable="true"]:hover{ background:rgba(46,74,107,0.08); }
+  [contenteditable="true"]:focus{ background:#fff; box-shadow:0 0 0 2px var(--adultes); }
+
+  .root-box{ border-top-color:var(--ink); text-align:center; }
+  .root-box .label{ font-family:'Fraunces', serif; font-size:1.1rem; font-weight:600; }
+
+  .sec-adultes > .box{ border-top-color:var(--adultes); }
+  .sec-jeunesse > .box{ border-top-color:var(--jeunesse); }
+  .sec-ados > .box{ border-top-color:var(--ados); }
+  .sec-jeux > .box{ border-top-color:var(--jeux); }
+  .sec-adultes .box{ border-top-color:var(--adultes); }
+  .sec-jeunesse .box{ border-top-color:var(--jeunesse); }
+  .sec-ados .box{ border-top-color:var(--ados); }
+  .sec-jeux .box{ border-top-color:var(--jeux); }
+  .sec-actualites .box{ border-top-color:var(--actualites); }
+
+  .swatch-rouge{ border-top-color:var(--rouge) !important; }
+  .swatch-bleue{ border-top-color:var(--bleue) !important; }
+  .swatch-blanche{ border-top-color:var(--blanche) !important; }
+
+  /* --- tree / connectors (classic CSS org-chart pattern) --- */
+  .tree{
+    display:inline-flex;
+    justify-content:center;
+    align-items:flex-start;
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  .tree .node{
+    position:relative;
+    padding:1.5rem 0.5rem 0;
+    text-align:center;
+  }
+  .tree .node::before, .tree .node::after{
+    content:'';
+    position:absolute; top:0; right:50%;
+    border-top:2px solid var(--line);
+    width:50%; height:1.5rem;
+  }
+  .tree .node::after{
+    right:auto; left:50%;
+    border-left:2px solid var(--line);
+  }
+  .tree .node:only-child::after,
+  .tree .node:only-child::before{ display:none; }
+  .tree .node:only-child{ padding-top:0; }
+  .tree .node:first-child::before,
+  .tree .node:last-child::after{ border:0 none; }
+  .tree .node:last-child::before{ border-right:2px solid var(--line); }
+  .tree .tree::before{
+    content:'';
+    position:absolute; top:0; left:50%;
+    border-left:2px solid var(--line);
+    width:0; height:1.5rem;
+  }
+  .node.collapsed > .tree{ display:none; }
+
+  @media print{
+    header, .toolbar{ display:none; }
+    body{ background:#fff; }
+    .chart-wrap{ overflow:visible; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">FICHE DE CLASSEMENT</div>
+  <h1 contenteditable="true">Organigramme de la bibliothèque</h1>
+  <p contenteditable="true">Structure des sections, cotes et pôles documentaires</p>
+</header>
+
+<div class="toolbar">
+  <button id="add-root">+ Ajouter une section</button>
+  <button id="expand-all">Tout déplier</button>
+  <button id="collapse-all">Tout replier</button>
+  <button id="zoom-out" title="Réduire">−</button>
+  <span class="zoom-label" id="zoom-label">100%</span>
+  <button id="zoom-in" title="Agrandir">+</button>
+  <button id="zoom-fit" title="Ajuster tout le schéma à l'écran">⤢ Ajuster à l'écran</button>
+  <button id="scroll-left" title="Défiler à gauche">←</button>
+  <button id="scroll-right" title="Défiler à droite">→</button>
+  <button id="download">Télécharger cette version (HTML)</button>
+  <span class="zoom-label" id="save-status" style="opacity:0; transition:opacity 0.3s;">💾 Enregistré</span>
+</div>
+
+<div class="chart-wrap" id="chart-wrap">
+  <div class="chart-scaler" id="chart-scaler">
+    <div class="chart-inner" id="chart-inner">
+      <div class="box root-box" id="root-box">
+        <div class="box-controls">
+          <span class="spacer"></span>
+        </div>
+        <div class="label" contenteditable="true">La bibliothèque</div>
+      </div>
+      <div class="stem"></div>
+      <ul class="tree" id="tree-root"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const data = [
+    { label:"Section Adultes", section:"adultes", children:[
+        { label:"Romans", detail:"cote 840-3 · A–Z" },
+        { label:"Bandes dessinées adultes" },
+        { label:"Livres grands caractères", detail:"GC 840-3 · A–Z" },
+        { label:"Livres audios" },
+        { label:"Documentaires", detail:"CDU · classés en pôles", collapsed:true, children:[
+            { label:"1 · Vie pratique", detail:"331 · 641 · 642 · 663 · 645.1 · 645.2 · 646" },
+            { label:"2 · Bien-être", detail:"159 · 613 · 615 · 616 · 617" },
+            { label:"3 · Apprentissage", detail:"331.1 · 004 · 372 · 373 · 620.1 · 075 (manuels)" },
+            { label:"4 · Hobbys, loisirs, sports", detail:"647 · 689 · 689.4/5 (dessin) · 793 → 799" },
+            { label:"5 · Info, politique, société", detail:"004.IA+IA.1 · 070 · 300·304·305·306·322·323·327·329·330·343·350·360 · + revues (actualité)" },
+            { label:"6 · Sciences", detail:"5… · 610 → 621 · 391 ?" },
+            { label:"7 · Arts", detail:"7…." },
+            { label:"8 · Pensées et spiritualités", detail:"133 · 140-170 (fusionné) · 200" },
+            { label:"9 · Grainothèque", detail:"58…" },
+            { label:"10 · Spa", detail:"Spa · 908" },
+            { label:"11 · Poésie et théâtre" }
+        ]}
+    ]},
+    { label:"Section Jeunesse", section:"jeunesse", children:[
+        { label:"PE 8a1", children:[
+            { label:"Fiction" },
+            { label:"Documentaire" }
+        ]},
+        { label:"8a1" },
+        { label:"8a2" },
+        { label:"8a3" },
+        { label:"8a4" },
+        { label:"J + CDU", detail:"doc. jeunesse, hors PE" },
+        { label:"Bandes dessinées enfants" },
+        { label:"Mangas enfants" }
+    ]},
+    { label:"Section Ados", section:"ados", children:[
+        { label:"Romans ados / jeunes adultes", detail:"cote Ado 8a5" },
+        { label:"Bandes dessinées ados" },
+        { label:"Mangas ados / jeunes adultes" }
+    ]},
+    { label:"Section Jeux", section:"jeux", children:[
+        { label:"Section rouge", detail:"jeux pour les petits", swatch:"rouge" },
+        { label:"Section bleue", detail:"jeux pour les enfants", swatch:"bleue" },
+        { label:"Section blanche", detail:"jeux pour + de 10 ans et adultes", swatch:"blanche" }
+    ]},
+    { label:"Salon actualités", section:"actualites", children:[
+        { label:"Revues" },
+        { label:"Journaux" }
+    ]}
+  ];
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  function boxHtml(node){
+    const swatch = node.swatch ? ` swatch-${node.swatch}` : '';
+    return `<div class="box${swatch}">
+      <div class="box-controls">
+        <button class="btn-toggle" title="Déplier / replier">▸</button>
+        <span class="spacer"></span>
+        <button class="btn-add" title="Ajouter une sous-section">+</button>
+        <button class="btn-remove" title="Supprimer">×</button>
+      </div>
+      <div class="label" contenteditable="true">${escapeHtml(node.label)}</div>
+      <div class="detail" contenteditable="true">${escapeHtml(node.detail)}</div>
+    </div>`;
+  }
+
+  function renderNode(node){
+    const sectionClass = node.section ? ` sec-${node.section}` : '';
+    const collapsedClass = node.collapsed ? ' collapsed' : '';
+    const childItems = (node.children || []).map(renderNode).join('');
+    return `<li class="node${sectionClass}${collapsedClass}">
+      ${boxHtml(node)}
+      <ul class="tree">${childItems}</ul>
+    </li>`;
+  }
+
+  const hasStorage = typeof window.storage !== 'undefined';
+  const STORAGE_KEY = 'bibliotheque-organigramme';
+  const TEMPLATE_VERSION = 2;
+
+  function collectState(){
+    return {
+      version: TEMPLATE_VERSION,
+      rootLabel: document.querySelector('#root-box .label').innerHTML,
+      treeHtml: document.getElementById('tree-root').innerHTML,
+      headerTitle: document.querySelector('header h1').innerHTML,
+      headerSubtitle: document.querySelector('header p').innerHTML
+    };
+  }
+
+  function flashSaved(ok){
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    el.textContent = ok ? '💾 Enregistré' : '⚠ Échec de l\'enregistrement';
+    el.style.opacity = '1';
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(() => { el.style.opacity = '0'; }, 1600);
+  }
+
+  async function saveState(){
+    if (!hasStorage) return;
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(collectState()), false);
+      flashSaved(true);
+    } catch (err) {
+      console.error('Échec de sauvegarde', err);
+      flashSaved(false);
+    }
+  }
+
+  async function loadState(){
+    if (!hasStorage) return false;
+    try {
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if (!res || !res.value) return false;
+      const s = JSON.parse(res.value);
+      if (s.version !== TEMPLATE_VERSION) return false;
+      document.querySelector('#root-box .label').innerHTML = s.rootLabel;
+      document.getElementById('tree-root').innerHTML = s.treeHtml;
+      document.querySelector('header h1').innerHTML = s.headerTitle;
+      document.querySelector('header p').innerHTML = s.headerSubtitle;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  (async function init(){
+    const restored = await loadState();
+    if (!restored) {
+      document.getElementById('tree-root').innerHTML = data.map(renderNode).join('');
+      saveState();
+    }
+    fitToScreen();
+  })();
+
+  function selectAllText(el){
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function newNodeLi(){
+    const li = document.createElement('li');
+    li.className = 'node';
+    li.innerHTML = boxHtml({ label:'Nouvelle section' }) + '<ul class="tree"></ul>';
+    return li;
+  }
+
+  function addChildTo(childrenUl, parentNode){
+    if(parentNode) parentNode.classList.remove('collapsed');
+    const li = newNodeLi();
+    childrenUl.appendChild(li);
+    const label = li.querySelector('.label');
+    setTimeout(() => { label.focus(); selectAllText(label); }, 0);
+    saveState();
+  }
+
+  document.getElementById('add-root').addEventListener('click', () => {
+    addChildTo(document.getElementById('tree-root'), null);
+  });
+
+  document.getElementById('expand-all').addEventListener('click', () => {
+    document.querySelectorAll('.node').forEach(n => n.classList.remove('collapsed'));
+  });
+  document.getElementById('collapse-all').addEventListener('click', () => {
+    document.querySelectorAll('.node').forEach(n => {
+      if (n.querySelector(':scope > .tree > .node')) n.classList.add('collapsed');
+    });
+  });
+
+  document.getElementById('chart-wrap').addEventListener('click', (e) => {
+    const toggleBtn = e.target.closest('.btn-toggle');
+    if (toggleBtn) {
+      toggleBtn.closest('.node').classList.toggle('collapsed');
+      return;
+    }
+    const addBtn = e.target.closest('.btn-add');
+    if (addBtn) {
+      const li = addBtn.closest('li.node');
+      const childrenUl = li.querySelector(':scope > .tree');
+      addChildTo(childrenUl, li);
+      return;
+    }
+    const rmBtn = e.target.closest('.btn-remove');
+    if (rmBtn) {
+      if (rmBtn.dataset.armed === '1') {
+        const li = rmBtn.closest('li.node');
+        li.remove();
+        saveState();
+      } else {
+        rmBtn.dataset.armed = '1';
+        rmBtn.textContent = '✓';
+        rmBtn.title = 'Cliquer à nouveau pour confirmer';
+        rmBtn.classList.add('confirming');
+        clearTimeout(rmBtn._timer);
+        rmBtn._timer = setTimeout(() => {
+          rmBtn.dataset.armed = '0';
+          rmBtn.textContent = '×';
+          rmBtn.title = 'Supprimer';
+          rmBtn.classList.remove('confirming');
+        }, 2500);
+      }
+      return;
+    }
+  });
+
+  document.querySelectorAll('.label').forEach(attachEnterBlur);
+  function attachEnterBlur(el){
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    });
+  }
+  document.getElementById('chart-wrap').addEventListener('focusin', (e) => {
+    if (e.target.classList.contains('label') && !e.target.dataset.bound) {
+      e.target.dataset.bound = '1';
+      attachEnterBlur(e.target);
+    }
+  });
+
+  const chartWrap = document.getElementById('chart-wrap');
+  const chartScaler = document.getElementById('chart-scaler');
+  const chartInner = document.getElementById('chart-inner');
+  const zoomLabel = document.getElementById('zoom-label');
+  let zoom = 1;
+
+  function applyZoom(){
+    const naturalW = chartInner.offsetWidth;
+    const naturalH = chartInner.offsetHeight;
+    chartInner.style.transform = `scale(${zoom})`;
+    chartScaler.style.width = (naturalW * zoom) + 'px';
+    chartScaler.style.height = (naturalH * zoom) + 'px';
+    zoomLabel.textContent = Math.round(zoom * 100) + '%';
+  }
+  function setZoom(z){
+    zoom = Math.min(1.5, Math.max(0.2, z));
+    applyZoom();
+  }
+  function fitToScreen(){
+    chartInner.style.transform = 'none';
+    const naturalW = chartInner.offsetWidth;
+    const available = chartWrap.clientWidth - 32;
+    setZoom(Math.min(1, available / naturalW));
+  }
+
+  document.getElementById('zoom-out').addEventListener('click', () => setZoom(zoom - 0.1));
+  document.getElementById('zoom-in').addEventListener('click', () => setZoom(zoom + 0.1));
+  document.getElementById('zoom-fit').addEventListener('click', fitToScreen);
+
+  fitToScreen();
+
+  let dragging = false, startX = 0, startScroll = 0;
+  chartWrap.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.box')) return;
+    dragging = true;
+    startX = e.clientX;
+    startScroll = chartWrap.scrollLeft;
+    chartWrap.classList.add('dragging');
+    chartWrap.setPointerCapture(e.pointerId);
+  });
+  chartWrap.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    chartWrap.scrollLeft = startScroll - (e.clientX - startX);
+  });
+  function endDrag(){ dragging = false; chartWrap.classList.remove('dragging'); }
+  chartWrap.addEventListener('pointerup', endDrag);
+  chartWrap.addEventListener('pointercancel', endDrag);
+
+  document.getElementById('scroll-left').addEventListener('click', () => {
+    chartWrap.scrollBy({ left: -320, behavior: 'smooth' });
+  });
+  document.getElementById('scroll-right').addEventListener('click', () => {
+    chartWrap.scrollBy({ left: 320, behavior: 'smooth' });
+  });
+
+  document.addEventListener('focusout', (e) => {
+    if (e.target.isContentEditable) saveState();
+  });
+
+  document.getElementById('download').addEventListener('click', () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const clone = document.documentElement.cloneNode(true);
+    clone.querySelector('.toolbar')?.remove();
+    const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'organigramme-bibliotheque.html';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  window.addEventListener('beforeprint', () => {
+    document.querySelectorAll('.node').forEach(n => n.classList.remove('collapsed'));
+  });
+</script>
+
+</body>
+</html>
